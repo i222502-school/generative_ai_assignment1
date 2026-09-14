@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+q1_cnn_xray/data/
+q1_cnn_xray/checkpoints/
+q1_cnn_xray/figures/
+q2_nmt_rnn/data/
+q2_nmt_rnn/checkpoints/
+q2_nmt_rnn/figures/
+
+kaggle.json
+*.pth
+*.pt
