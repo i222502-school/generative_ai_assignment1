@@ -7,6 +7,9 @@ import unicodedata
 
 import pandas as pd
 
+from q2_nmt_rnn.src.config import MAX_SEQUENCE_LENGTH
+from q2_nmt_rnn.src.tokenizer import tokenize
+
 _WHITESPACE_RE = re.compile(r"\s+")
 
 
@@ -27,4 +30,14 @@ def clean_pairs(df: pd.DataFrame, en_col: str = "en", ur_col: str = "ur") -> pd.
 
     non_empty = (df["en"].str.len() > 1) & (df["ur"].str.len() > 1)
     deduped = df[non_empty].drop_duplicates(subset=["en", "ur"])
-    return deduped.reset_index(drop=True)
+    return filter_by_length(deduped.reset_index(drop=True))
+
+
+def filter_by_length(df: pd.DataFrame, max_length: int = MAX_SEQUENCE_LENGTH) -> pd.DataFrame:
+    """Drops pairs where either side exceeds max_length tokens -- caps how much a vanilla
+    RNN's single fixed-size hidden state has to carry (see models/seq2seq.py's docstring).
+    """
+    short_enough = (df["en"].map(lambda t: len(tokenize(t))) <= max_length) & (
+        df["ur"].map(lambda t: len(tokenize(t))) <= max_length
+    )
+    return df[short_enough].reset_index(drop=True)

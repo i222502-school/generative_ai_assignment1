@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 import pandas as pd
@@ -14,6 +15,11 @@ from q2_nmt_rnn.src.preprocess import clean_pairs
 logger = logging.getLogger(__name__)
 
 _COLUMN_ALIASES = {"en": ("en", "english", "eng", "source"), "ur": ("ur", "urdu", "target")}
+_TABULAR_READERS: tuple[tuple[str, Callable[..., pd.DataFrame]], ...] = (
+    ("*.csv", pd.read_csv),
+    ("*.xlsx", pd.read_excel),
+    ("*.xls", pd.read_excel),
+)
 
 
 def _find_column(columns: list[str], aliases: tuple[str, ...]) -> str:
@@ -25,16 +31,16 @@ def _find_column(columns: list[str], aliases: tuple[str, ...]) -> str:
 
 
 def load_pairs(raw_dir: Path) -> pd.DataFrame:
-    """Handles the two shapes a Kaggle parallel corpus like this usually ships as: a single
-    CSV with English/Urdu columns, or two aligned .txt files (one sentence per line). If
-    the real download matches neither, this is the one function to adjust.
+    """Handles the shapes a Kaggle parallel corpus like this typically ships as: a single
+    CSV/XLSX with English/Urdu columns, or two aligned .txt files (one sentence per line).
     """
-    csv_candidates = list(raw_dir.rglob("*.csv"))
-    if csv_candidates:
-        df = pd.read_csv(csv_candidates[0])
-        en_col = _find_column(list(df.columns), _COLUMN_ALIASES["en"])
-        ur_col = _find_column(list(df.columns), _COLUMN_ALIASES["ur"])
-        return df.rename(columns={en_col: "en", ur_col: "ur"})[["en", "ur"]]
+    for pattern, reader in _TABULAR_READERS:
+        candidates = list(raw_dir.rglob(pattern))
+        if candidates:
+            df = reader(candidates[0])
+            en_col = _find_column(list(df.columns), _COLUMN_ALIASES["en"])
+            ur_col = _find_column(list(df.columns), _COLUMN_ALIASES["ur"])
+            return df.rename(columns={en_col: "en", ur_col: "ur"})[["en", "ur"]]
 
     txt_files = sorted(raw_dir.rglob("*.txt"))
     en_file = next((f for f in txt_files if "en" in f.stem.lower()), None)
